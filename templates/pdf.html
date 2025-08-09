@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <style>
+        .form-group {
+            margin: 15px 0;
+        }
+        .form-control {
+            border: 1px solid black;
+            padding: 10px;
+            width: 100%;
+        }
+        #pdfPreview {
+            border: 2px solid #ddd;
+            margin-top: 20px;
+        }
+    </style>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.7/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-LN+7fdVzj6u52u30Kp6M/trliBMCMKTyK833zpbD+pXdCLuTusPj697FH4R/5mcr" crossorigin="anonymous">
+    <title>PDF Ausfüllen</title>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+</head>
+<body>
+    <div class="container mt-4">
+        <h2>PDF Formular ausfüllen</h2>
+        <form id="pdfForm">
+            <div class="form-group">
+                <label for="vorname">Vorname</label>
+                <input type="text" class="form-control" name="vorname" id="vorname" placeholder="Vorname" required>
+            </div>
+            <div class="form-group">
+                <label for="nachname">Nachname</label>
+                <input type="text" class="form-control" name="nachname" id="nachname" placeholder="Nachname" required>
+            </div>
+            <div class="form-group">
+                <label for="geburtsdatum">Geburtsdatum</label>
+                <input type="date" class="form-control" name="geburtsdatum" id="geburtsdatum" required>
+            </div>
+            <div class="form-group">
+                <label for="geburtsort">Geburtsort</label>
+                <input type="text" class="form-control" name="geburtsort" id="geburtsort" placeholder="Geburtsort" required>
+            </div>
+            <button type="submit" class="btn btn-primary">PDF erstellen und anzeigen</button>
+        </form>
+        
+        <div id="previewSection" style="display:none;">
+            <h3 class="mt-4">PDF Vorschau</h3>
+            <iframe id="pdfPreview" style="width:100%; height:600px;"></iframe>
+            <div class="mt-3">
+                <a id="downloadBtn" class="btn btn-success" download="ausgefuelltes_formular.pdf">PDF herunterladen</a>
+                <button id="uploadBtn" class="btn btn-info">In Nextcloud hochladen</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        $(document).ready(function() {
+            $('#pdfForm').submit(function(event) {
+                event.preventDefault();
+                
+                // Zeige Loading-Indikator
+                $('button[type="submit"]').prop('disabled', true).text('PDF wird erstellt...');
+                
+                $.ajax({
+                    type: 'POST',
+                    url: '/fill_pdf',
+                    data: $(this).serialize(),
+                    xhrFields: {
+                        responseType: 'blob'
+                    },
+                    success: function(data, status, xhr) {
+                        // Erstelle URL für das PDF
+                        const pdfUrl = URL.createObjectURL(data);
+                        
+                        // Zeige Vorschau
+                        $('#pdfPreview').attr('src', pdfUrl);
+                        $('#downloadBtn').attr('href', pdfUrl);
+                        $('#previewSection').show();
+                        
+                        // Button zurücksetzen
+                        $('button[type="submit"]').prop('disabled', false).text('PDF erstellen und anzeigen');
+                        
+                        // Scroll zur Vorschau
+                        $('#previewSection')[0].scrollIntoView();
+                    },
+                    error: function(xhr, status, error) {
+                        alert('Fehler beim Erstellen der PDF: ' + error);
+                        $('button[type="submit"]').prop('disabled', false).text('PDF erstellen und anzeigen');
+                    }
+                });
+            });
+            
+            // Nextcloud Upload
+            $('#uploadBtn').click(function() {
+                const pdfUrl = $('#downloadBtn').attr('href');
+                if(pdfUrl) {
+                    // Hier würde die Nextcloud-Upload-Logik kommen
+                    alert('Nextcloud-Upload wird implementiert...');
+                }
+            });
+        });
+    </script>
+</body>
+</html>
