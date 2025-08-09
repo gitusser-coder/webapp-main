@@ -1,78 +1,23 @@
-from flask import Flask, render_template, request, redirect, url_for, send_file, jsonify
-import os
+from flask import Flask, render_template, request, jsonify, Response
 from io import BytesIO
+from reportlab.pdfgen import canvas
+from reportlab.lib.pagesizes import letter
 
 app = Flask(__name__)
 
-NAMEN = [
-
-{
-  'id': 1,
-  'name': 'Darius',
-  'Beruf': 'Softwareentwickler',
-  'Alter': '24',
-  'Größe': '1.82'
-
-},
-
-{
-
-  'id': 2,
-  'name': 'Danial',
-  'Beruf': 'TikToker',
-  'Alter': '22',
-  'Größe': '1.71'
-
-},
-
-{
-
-  'id': 3,
-  'name': 'Timon',
-  'Beruf': 'TikToker',
-  'Alter': '22',
-  'Größe': '1.70'
-
-},
-
-{
-
-  'id': 4,
-  'name': 'Kourosch',
-  'Beruf': 'TikToker',
-  'Alter': '20',
-  'Größe': '1.70'
-
-},
-
-{
-
-  'id': 5,
-  'name': 'Nikan',
-  'Beruf': 'Autohersteller',
-  'Alter': '22',
-  'Größe': '1.69'
-
-}
-
-
-]
-
 @app.route('/')
 def index():
-  return render_template('index.html', namen=NAMEN, Geschäftsführer='Darius')
-
+    return render_template('index.html', Geschäftsführer='Darius')
 
 @app.route('/login', methods=['GET', 'POST'])
 def login():
-  return render_template('login.html')
+    return render_template('login.html')
 
-
-@app.route('/pdf-datei', methods=['GET', 'POST'])
+@app.route('/pdf-datei', methods=['GET'])
 def pdf():
     return render_template("pdf.html")
 
-@app.route('/fill_pdf', methods=['POST'])
+@app.route('/fillpdf', methods=['POST'])
 def fill_pdf():
     try:
         # Formulardaten abrufen
@@ -80,42 +25,44 @@ def fill_pdf():
         nachname = request.form.get('nachname', '')
         geburtsdatum = request.form.get('geburtsdatum', '')
         geburtsort = request.form.get('geburtsort', '')
-        
-        # Hier würde normalerweise die PDF-Bibliothek verwendet werden
-        # Für jetzt erstellen wir eine einfache Text-"PDF" als Beispiel
-        pdf_content = f"""
-PDF FORMULAR - AUSGEFÜLLT
 
-Vorname: {vorname}
-Nachname: {nachname} 
-Geburtsdatum: {geburtsdatum}
-Geburtsort: {geburtsort}
-
-Erstellt mit der Flask PDF-App
-        """.strip()
-        
-        # Erstelle einen BytesIO-Stream für die "PDF"
+        # PDF im Speicher erstellen
         pdf_buffer = BytesIO()
-        pdf_buffer.write(pdf_content.encode('utf-8'))
+        pdf_canvas = canvas.Canvas(pdf_buffer, pagesize=letter)
+        pdf_canvas.setTitle("Ausgefülltes Formular")
+
+        # Überschrift
+        pdf_canvas.setFont("Helvetica-Bold", 16)
+        pdf_canvas.drawString(100, 750, "PDF FORMULAR - AUSGEFÜLLT")
+
+        # Formulardaten
+        pdf_canvas.setFont("Helvetica", 12)
+        pdf_canvas.drawString(100, 700, f"Vorname: {vorname}")
+        pdf_canvas.drawString(100, 680, f"Nachname: {nachname}")
+        pdf_canvas.drawString(100, 660, f"Geburtsdatum: {geburtsdatum}")
+        pdf_canvas.drawString(100, 640, f"Geburtsort: {geburtsort}")
+
+        # Fußnote
+        pdf_canvas.setFont("Helvetica-Oblique", 10)
+        pdf_canvas.drawString(100, 600, "Erstellt mit der Flask PDF-App")
+
+        # PDF abschließen
+        pdf_canvas.showPage()
+        pdf_canvas.save()
+
         pdf_buffer.seek(0)
-        
-        return send_file(
-            pdf_buffer,
-            as_attachment=False,
-            download_name=f'{nachname}_{vorname}_formular.pdf',
-            mimetype='application/pdf'
-        )
-        
+        pdf_bytes = pdf_buffer.read()
+
+        # Sauber als PDF zurückgeben
+        return Response(pdf_bytes, mimetype='application/pdf')
+
     except Exception as e:
+        app.logger.error(f"Fehler bei PDF-Erstellung: {e}", exc_info=True)
         return jsonify({'error': str(e)}), 500
 
 @app.route('/vorschau')
 def vorschau():
     return render_template('vorschau.html')
 
-
-
-
-
 if __name__ == '__main__':
-  app.run(host="0.0.0.0", port=5001, debug=True)
+    app.run(host="0.0.0.0", port=5000, debug=True)
